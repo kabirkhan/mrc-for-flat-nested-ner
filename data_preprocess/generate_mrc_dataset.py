@@ -15,8 +15,7 @@
 # 2. for nested ner, the input file in json 
 
 
-import json 
-
+import json
 
 from data_preprocess.file_utils import load_conll 
 from data_preprocess.label_utils import get_span_labels 
@@ -143,6 +142,10 @@ def transform_examples_to_qa_features(query_map, entity_labels, data_instances, 
 
 
     return mrc_ner_dataset
+
+
+
+
 
 
 

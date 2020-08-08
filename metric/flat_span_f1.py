@@ -10,7 +10,6 @@
 import json
 from typing import List, Set, Tuple
 
-
 def mask_span_f1(batch_preds, batch_labels, batch_masks=None, label_list: List[str] = None,
                  output_path = None):
     """
@@ -117,6 +116,11 @@ class Tag(object):
 
 
 def bmes_decode(char_label_list: List[Tuple[str, str]]) -> Tuple[str, List[Tag]]:
+    """
+    Desc:
+        char_label_list: the input of char_label_list respond to one sentence.
+            example: [['上', 'B-GPE'], ['海', 'E-GPE'], ['浦', 'B-GPE'], ['东', 'E-GPE'], ['开', 'O'], ['发', 'O'], ['与', 'O'], ['法', 'O'], ['制', 'O'], ['建', 'O'], ['设', 'O'], ['同', 'O'], ['步', 'O']]
+    """
     idx = 0
     length = len(char_label_list)
     tags = []
