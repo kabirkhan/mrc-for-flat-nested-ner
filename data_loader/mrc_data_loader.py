@@ -12,21 +12,24 @@ import math
 import torch
 from glob import glob
 from multiprocessing import Pool
+from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 from data_loader.mrc_utils import convert_examples_to_features
 
 
 
 class MRCNERDataLoader(object):
-    def __init__(self, config, data_processor, label_list, tokenizer, mode="train", allow_impossible=True):
+    def __init__(self, config, data_processor, label_list, tokenizer, mode="train", allow_impossible=True, entity_scheme="bes"):
 
         self.data_dir = config.data_dir
         self.max_seq_length= config.max_seq_length
+        self.entity_scheme = entity_scheme
+        self.distributed_data_sampler = config.n_gpu > 1 && config.data_parallel == "ddp"
 
         if mode == "train":
             self.train_batch_size = config.train_batch_size
-            self.dev_batch_size = config.dev_batch_size 
-            self.test_batch_size = config.test_batch_size 
+            self.dev_batch_size = config.dev_batch_size
+            self.test_batch_size = config.test_batch_size
             self.num_train_epochs = config.num_train_epochs 
         elif mode == "test":
             self.test_batch_size = config.test_batch_size
@@ -44,16 +47,16 @@ class MRCNERDataLoader(object):
         self.allow_impossible = allow_impossible
         self.tokenizer = tokenizer
         self.max_seq_len = config.max_seq_length 
-        self.data_cache = config.data_cache 
+        self.data_cache = config.data_cache
 
         self.num_train_instances = 0 
         self.num_dev_instances = 0 
         self.num_test_instances = 0
 
-    def convert_examples_to_features(self, data_sign="train", num_data_processor=1):
+    def convert_examples_to_features(self, data_sign="train", num_data_processor=1, logger=None):
 
-        print("=*="*10)
-        print("loading {} data ... ...".format(data_sign))
+        logger.info("=*="*10)
+        logger.info(f"loading {data_sign} data ... ...")
 
         if data_sign == "train":
             examples = self.data_processor.get_train_examples(self.data_dir)
@@ -70,17 +73,18 @@ class MRCNERDataLoader(object):
         if num_data_processor == 1:
             cache_path = os.path.join(self.data_dir, "mrc-ner.{}.cache.{}".format(data_sign, str(self.max_seq_len)))
             if os.path.exists(cache_path):
+                logger.info(f"%%%% %%%% Load Saved Cache files in {cache_path} %%% %%% ")
                 features = torch.load(cache_path)
             else:
                 features = convert_examples_to_features(examples, self.tokenizer, self.label_list, self.max_seq_length,
-                                                    allow_impossible=self.allow_impossible)
+                                                    allow_impossible=self.allow_impossible, entity_scheme=self.entity_scheme)
                 torch.save(features, cache_path)
             return features
 
         def export_features_to_cache_file(idx, sliced_features, num_data_processor):
             cache_path = os.path.join(self.data_dir, "mrc-ner.{}.cache.{}.{}-{}".format(data_sign, str(self.max_seq_len), str(num_data_processor), str(idx)))
             torch.save(sliced_features, cache_path)
-            print(">>> >>> >>> export sliced features to : {}".format(cache_path))
+            logger.info(f">>> >>> >>> export sliced features to : {cache_path}")
 
         features_lst = []
         total_examples = len(examples)
@@ -89,7 +93,7 @@ class MRCNERDataLoader(object):
         collection_of_preprocessed_cache = glob(path_to_preprocessed_cache)
 
         if len(collection_of_preprocessed_cache) == num_data_processor:
-            print("%%%% %%%% Load Saved Cache files in {} %%% %%% ".format(self.data_dir))
+            logger.info(f"%%%% %%%% Load Saved Cache files in {self.data_dir} %%% %%% ")
         elif len(collection_of_preprocessed_cache) != 0:
             for item_of_preprocessed_cache in collection_of_preprocessed_cache:
                 os.remove(item_of_preprocessed_cache)
@@ -97,7 +101,8 @@ class MRCNERDataLoader(object):
                 start = size_of_one_process * idx
                 end = (idx+1) * size_of_one_process if (idx+1)* size_of_one_process < total_examples else total_examples
                 sliced_examples = examples[start:end]
-                sliced_features = convert_examples_to_features(sliced_examples, self.tokenizer, self.label_list, self.max_seq_length, allow_impossible=self.allow_impossible)
+                sliced_features = convert_examples_to_features(sliced_examples, self.tokenizer, self.label_list,
+                                                               self.max_seq_length, allow_impossible=self.allow_impossible, entity_scheme=self.entity_scheme)
                 export_features_to_cache_file(idx, sliced_features, num_data_processor)
             del examples
         else:
@@ -105,13 +110,14 @@ class MRCNERDataLoader(object):
                 start = size_of_one_process * idx
                 end = (idx+1) * size_of_one_process if (idx+1)* size_of_one_process < total_examples else total_examples
                 sliced_examples = examples[start:end]
-                sliced_features = convert_examples_to_features(sliced_examples, self.tokenizer, self.label_list, self.max_seq_length, allow_impossible=self.allow_impossible)
+                sliced_features = convert_examples_to_features(sliced_examples, self.tokenizer, self.label_list,
+                                                               self.max_seq_length, allow_impossible=self.allow_impossible, entity_scheme=self.entity_scheme)
                 export_features_to_cache_file(idx, sliced_features, num_data_processor)
             del examples
 
         multi_process_for_data = Pool(num_data_processor)
         for idx in range(num_data_processor):
-            features_lst.append(multi_process_for_data.apply_async(MRCNERDataLoader.read_features_from_cache_file, args=(idx, self.data_dir, data_sign, self.max_seq_len, num_data_processor)))
+            features_lst.append(multi_process_for_data.apply_async(MRCNERDataLoader.read_features_from_cache_file, args=(idx, self.data_dir, data_sign, self.max_seq_len, num_data_processor, logger)))
 
         multi_process_for_data.close()
         multi_process_for_data.join()
@@ -119,16 +125,16 @@ class MRCNERDataLoader(object):
         for feature_slice in features_lst:
             features.extend(feature_slice.get())
 
-        print("check number of examples before and after data processing : ")
-        print(len(features), total_examples)
+        logger.info("check number of examples before and after data processing : ")
+        logger.info(f"{len(features)}, {total_examples}")
         assert len(features) == total_examples
 
         return features
 
-    def get_dataloader(self, data_sign="train", num_data_processor=1):
+    def get_dataloader(self, data_sign="train", num_data_processor=1, logger=None):
         
-        features = self.convert_examples_to_features(data_sign=data_sign, num_data_processor=num_data_processor)
-        print("{} {} data loaded".format(str(len(features)), data_sign))
+        features = self.convert_examples_to_features(data_sign=data_sign, num_data_processor=num_data_processor, logger=logger)
+        logger.info(f"{len(features)} {data_sign} data loaded")
         input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
         input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
         segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
@@ -140,7 +146,11 @@ class MRCNERDataLoader(object):
         dataset = TensorDataset(input_ids, input_mask, segment_ids, start_pos, end_pos, span_pos, span_label_mask, ner_cate)
         
         if data_sign == "train":
-            datasampler = SequentialSampler(dataset) # RandomSampler(dataset)
+            if self.distributed_data_sampler:
+                # Please Note that DistributedSampler samples randomly
+                datasampler = DistributedSampler(dataset)
+            else:
+                datasampler = RandomSampler(dataset)
             dataloader = DataLoader(dataset, sampler=datasampler, batch_size=self.train_batch_size)
         elif data_sign == "dev":
             datasampler = SequentialSampler(dataset)
@@ -151,17 +161,16 @@ class MRCNERDataLoader(object):
 
         return dataloader 
 
-
-    def get_num_train_epochs(self, ):
-        return int((self.num_train_instances / self.train_batch_size) * self.num_train_epochs)
-
     @staticmethod
-    def read_features_from_cache_file(idx, data_dir, data_sign, max_seq_len, num_data_processor):
+    def read_features_from_cache_file(idx, data_dir, data_sign, max_seq_len, num_data_processor, logger):
         cache_path = os.path.join(data_dir,
                                   "mrc-ner.{}.cache.{}.{}-{}".format(data_sign, str(max_seq_len), str(num_data_processor), str(idx)))
         sliced_features = torch.load(cache_path)
-        print("load sliced features from : {} <<< <<< <<<".format(cache_path))
+        logger.info(f"load sliced features from : {cache_path} <<< <<< <<<")
         return sliced_features
+
+    def get_train_instance(self, ):
+        return self.num_train_instances
 
 
 
