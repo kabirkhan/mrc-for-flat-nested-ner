@@ -1,12 +1,6 @@
-numpy
-awscli
 requests
 scipy
-argparse
 tqdm
-typing
-pathlib
-boto3
 pathos
 tensorboardX
-pytorch-pretrained-bert==0.6.1
+transformers==3.0.2

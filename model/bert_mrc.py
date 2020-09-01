@@ -10,10 +10,9 @@
 
 import torch
 import torch.nn as nn
-
+from transformers import BertModel
 
 from layer.classifier import MultiNonLinearClassifier, SingleNonLinearClassifier
-from layer.bert_basic_model import BertModel, BertConfig
 
 
 class BertQueryNER(nn.Module):
