@@ -56,7 +56,6 @@ Evaluations are conducted on the widely-used bechmarks: `CoNLL2003`, `OntoNotes 
 | Our method |  **91.11** | **95.75** | **82.11** | 
 |  |  **(+1.95)** | **(+0.21)** | **(+0.48)** | 
 
-
 ### Nested NER Datasets
 Evaluations are conducted on the widely-used `ACE 2004`, `ACE 2005`, `GENIA`, `KBP-2017` English datasets.
 
@@ -84,8 +83,11 @@ Previous SOTA:
 	`<model_name>` should take the value of `[en_bert_cl, en_bert_wwm_cl, zh_bert]`.
 
 	- Run the following command and transform the checkpoints from tensorflow (.ckpt) to pytorch (.bin). <br>
+
 **NOTICE**: need to install `tensorflow-gpu==1.15`
-`bash ./script/data/convert_checkpoints_from_tf_to_pytorch.sh <model_sign> <dir_to_bert_model> `<br> 
+
+`bash ./script/data/convert_checkpoints_from_tf_to_pytorch.sh <model_sign> <dir_to_bert_model>` <br> 
+
 `<model_sign>` should take the value of `[zh_bert, en_bert_cased_large, en_bert_wwm_cased_large]`. 
 
 - For faster training, install NVIDIA's [Apex](https://github.com/NVIDIA/apex) library:
@@ -96,7 +98,10 @@ cd apex
 pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" \
   --global-option="--deprecated_fused_adam" --global-option="--xentropy" \
   --global-option="--fast_multihead_attn" ./
-```
+``` 
+**NOTICE**: The program stops running and raises a `StopIteration ERROR` exception if you want to train the model on Multi-gpu with `torch==1.5.x`.
+The solution is to increase the values of `--gradient_accumulation_steps` and `--train_batch_size`. 
+Please refer the [link](https://github.com/amdegroot/ssd.pytorch/issues/214) for more details.
 
 ## Data Preprocess 
 
@@ -123,34 +128,39 @@ export PYTHONPATH="$PYTHONPATH:$REPO_PATH"
 CONFIG_PATH=${FOLDER_PATH}/config/zh_bert.json
 DATA_PATH=/PATH-TO-BERT_MRC-DATA/zh_ontonotes4
 BERT_PATH=/PATH-TO-BERT-CHECKPOINTS/chinese_L-12_H-768_A-12
-EXPORT_DIR=/PATH-TO-SAVE-MODEL-CKPT
-data_sign=zh_onto 
-entity_sign=flat
+OUTPUT_PATH=/PATH-TO-SAVE-MODEL-CKPT
 
-CUDA_VISIBLE_DEVICES=3 python3 $REPO_PATH/run/train_bert_mrc.py \
+CUDA_VISIBLE_DEVICES=0 nohup python3 $REPO_PATH/run/train_bert_mrc.py \
+--optimizer_type adamw \
+--lr_scheduler_type ladder \
+--lr_min 8e-6 \
+--loss_type ce \
+--weight_decay 0.01 \
+--max_grad_norm 1.0 \
 --data_dir $DATA_PATH \
---n_gpu $N_GPU \
---entity_sign $ENTITY_SIGN \
---num_data_processor $NUM_DATA_PROCESSOR \
---data_sign $DATA_SIGN \
+--n_gpu 1 \
+--entity_sign flat \
+--num_data_processor 1 \
+--data_sign zh_onto \
+--logfile_name log.txt \
 --bert_model $BERT_PATH \
 --config_path $CONFIG_PATH \
 --output_dir $OUTPUT_PATH \
---dropout $DP \
---checkpoint $CHECKPOINT \
---max_seq_length $MAX_LEN \
---train_batch_size $TRAIN_BZ \
---dev_batch_size $DEV_BZ \
---test_batch_size $TEST_BZ \
---learning_rate $LR \
---weight_start $START_LRATIO \
---weight_end $END_LRATIO \
---weight_span $SPAN_LRATIO \
---num_train_epochs $NUM_EPOCH \
---seed $SEED \
---warmup_proportion $WARMUP_PRO \
---gradient_accumulation_steps $GradACC \
---fp16
+--dropout 0.1 \
+--checkpoint 600 \
+--max_seq_length 256 \
+--train_batch_size 12 \
+--dev_batch_size 12 \
+--test_batch_size 12 \
+--learning_rate 1e-5 \
+--weight_start 1.0 \
+--weight_end 1.0 \
+--weight_span 1.0 \
+--num_train_epochs 8 \
+--seed 2333 \
+--warmup_steps 500 \
+--gradient_accumulation_steps 2 \
+--only_eval_dev &
 ```
 
 ** Notice: ** We recommend set `--num_data_processor $NUM_DATA_PROCESSOR` to `1` for small datasets and enlarge for large datasets like English OntoNotes 5.0. 
@@ -167,22 +177,26 @@ REPO_PATH=/PATH-TO-REPO/mrc-for-flat-nested-ner
 CONFIG_PATH=${FOLDER_PATH}/config/zh_bert.json
 DATA_PATH=/PATH-TO-BERT_MRC-DATA/zh_ontonotes4
 BERT_PATH=/PATH-TO-BERT-CHECKPOINTS/chinese_L-12_H-768_A-12
-SAVED_MODEL_PATH=/PATH-TO-SAVED-MODEL-CKPT/bert_finetune_model.bin
-data_sign=zh_onto 
-entity_sign=flat
+EVAL_MODEL_PATH=/PATH-TO-SAVED-MODEL-CKPT/bert_finetune_model.bin
 
-export PYTHONPATH=${REPO_PATH}
-CUDA_VISIBLE_DEVICES=0 python3 ${REPO_PATH}/run/evaluate_mrc_ner.py \
---config_path ${CONFIG_PATH} \
---data_dir ${DATA_PATH} \
---bert_model ${BERT_PATH} \
---saved_model ${SAVED_MODEL_PATH} \
---max_seq_length 100 \
+CUDA_VISIBLE_DEVICES=0  python3 $REPO_PATH/run/evaluate_mrc_ner.py \
+--config_path $CONFIG_PATH \
+--data_dir $DATA_PATH \
+--bert_model $BERT_PATH \
+--saved_model $EVAL_MODEL_PATH \
+--logfile_path eval_log.txt \
+--data_sign zh_onto \
+--entity_sign flat \
+--num_data_processor 1 \
+--max_seq_length 260 \
 --test_batch_size 32 \
---data_sign ${data_sign} \
---entity_sign ${entity_sign} \
---n_gpu 1 \
---seed 2333
+--dropout 0.1 \
+--weight_start 1 \
+--weight_end 1 \
+--weight_span 1 \
+--entity_threshold 0.15 \
+--seed 2333 \
+--n_gpu 1
 ```
 
 ## Descriptions of Directories 

@@ -3,4 +3,5 @@ scipy
 tqdm
 pathos
 torch==1.5.1
+tensorboardX
 transformers==3.0.2
