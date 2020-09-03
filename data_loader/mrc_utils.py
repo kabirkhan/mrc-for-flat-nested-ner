@@ -8,6 +8,7 @@
 # mrc_utils.py 
 
 
+import sys
 import json
 import numpy as np 
 
@@ -82,6 +83,9 @@ class InputFeatures(object):
 
 def convert_examples_to_features(examples, tokenizer, label_lst, max_seq_length, is_training=True, 
     allow_impossible=True, pad_sign=True):
+
+    print("EXAMPLES LENGTH", len(examples))
+
     label_map = {tmp: idx for idx, tmp in enumerate(label_lst)}
     features = []
 
@@ -139,7 +143,9 @@ def convert_examples_to_features(examples, tokenizer, label_lst, max_seq_length,
                     doc_end_pos.append(end_label)
                     all_doc_tokens.extend(tmp_subword_lst) 
                 else:
-                    raise ValueError("Please check the result of tokenizer !!! !!! ")
+                    print("TOKEN: ", token)
+                    print("tmp_subword_list", tmp_subword_lst)
+                    print("Please check the result of tokenizer !!! !!! ")
 
             for span_item in example.span_position:
                 s_idx, e_idx = span_item.split(";")
@@ -219,24 +225,24 @@ def convert_examples_to_features(examples, tokenizer, label_lst, max_seq_length,
         start_pos = np.array(start_pos, dtype=np.int32)
         end_pos = np.array(end_pos, dtype=np.int32)
         doc_span_pos = np.array(doc_span_pos, dtype=np.int32)
-        span_label_mask = np.array(span_label_mask, dtype=np.int32)
+        span_label_mask = np.array(span_label_mask, dtype=np.int32)        
 
-        features.append(
-            InputFeatures(
-                unique_id=example.qas_id, 
-                tokens=input_tokens, 
-                input_ids=input_ids, 
-                input_mask=input_mask, 
-                segment_ids=segment_ids, 
-                start_position=start_pos, 
-                end_position=end_pos, 
-                span_position=doc_span_pos,
-                span_label_mask=span_label_mask,
-                is_impossible=example.is_impossible, 
-                ner_cate=label_map[example.ner_cate]
-                ))
-
-    return features 
+        input_features = InputFeatures(
+            unique_id=example.qas_id, 
+            tokens=input_tokens, 
+            input_ids=input_ids, 
+            input_mask=input_mask, 
+            segment_ids=segment_ids, 
+            start_position=start_pos, 
+            end_position=end_pos, 
+            span_position=doc_span_pos,
+            span_label_mask=span_label_mask,
+            is_impossible=example.is_impossible, 
+            ner_cate=label_map[example.ner_cate]
+        )
+        # print(input_features.input_ids)
+        # raise
+        yield input_features
 
 
 def read_mrc_ner_examples(input_file, is_training=True, with_negative=True):
@@ -246,7 +252,14 @@ def read_mrc_ner_examples(input_file, is_training=True, with_negative=True):
     """
 
     with open(input_file, "r") as f:
-        input_data = json.load(f) 
+        input_data = json.load(f)
+
+    if "train" in input_file:
+        print("Before Input Data:", len(input_data))
+        input_data = input_data[:1500 * 18]
+        print("After Input Data slice:", len(input_data))
+    else:
+        input_data = input_data[:500 * 18]
 
     def is_whitespace(c):
         if c == " " or c == "\t" or c == "\r" or c == "\n" or ord(c) == 0x202F:
@@ -273,7 +286,7 @@ def read_mrc_ner_examples(input_file, is_training=True, with_negative=True):
             is_impossible=is_impossible, 
             ner_cate=ner_cate)
         examples.append(example)
-    print(len(examples))
+    del input_data
     return examples  
 
 

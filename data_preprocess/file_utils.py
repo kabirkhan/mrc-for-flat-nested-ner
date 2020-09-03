@@ -38,7 +38,7 @@ def load_conll(data_path):
         for line in f:
             if line != "\n":
                 # line = line.strip()
-                word, tag = line.split(" ")
+                word, tag = line.split("\t")
                 word = word.strip()
                 tag = tag.strip()
                 try:

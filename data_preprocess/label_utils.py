@@ -43,7 +43,7 @@ def get_span_labels(sentence_tags, inv_label_mapping=None):
     last = "O"
     start = -1 
     for i, tag in enumerate(sentence_tags):
-        pos, _ = (None, "O") if tag == "O" else tag.split("-")
+        pos, _ = (None, "O") if tag == "O" else tag.split("-", 1)
         if (pos == "S" or pos == "B" or tag == "O") and last != "O":
             span_labels.append((start, i - 1, last.split("-")[-1]))
         if pos == "B" or pos == "S" or last == "O":

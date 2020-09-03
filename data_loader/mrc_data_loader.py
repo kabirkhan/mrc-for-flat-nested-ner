@@ -7,6 +7,7 @@
 # description:
 # 
 
+import sys
 import os
 import math
 import torch
@@ -68,13 +69,15 @@ class MRCNERDataLoader(object):
             raise ValueError("please notice that the data_sign can only be train/dev/test !!")
 
         if num_data_processor == 1:
-            cache_path = os.path.join(self.data_dir, "mrc-ner.{}.cache.{}".format(data_sign, str(self.max_seq_len)))
-            if os.path.exists(cache_path):
-                features = torch.load(cache_path)
-            else:
-                features = convert_examples_to_features(examples, self.tokenizer, self.label_list, self.max_seq_length,
-                                                    allow_impossible=self.allow_impossible)
-                torch.save(features, cache_path)
+            # cache_path = os.path.join(self.data_dir, "mrc-ner.{}.cahe.{}".format(data_sign, str(self.max_seq_len)))
+            # if os.path.exists(cache_path):
+            #     features = torch.load(cache_path)
+            # else:
+            features = convert_examples_to_features(examples, self.tokenizer, self.label_list, self.max_seq_length,
+                                                allow_impossible=self.allow_impossible)
+                # torch.save(features, cache_path)
+
+            print("FEATURES SIZE", sys.getsizeof(features))
             return features
 
         def export_features_to_cache_file(idx, sliced_features, num_data_processor):
@@ -128,7 +131,18 @@ class MRCNERDataLoader(object):
     def get_dataloader(self, data_sign="train", num_data_processor=1):
         
         features = self.convert_examples_to_features(data_sign=data_sign, num_data_processor=num_data_processor)
-        print("{} {} data loaded".format(str(len(features)), data_sign))
+
+        features = list(features)
+
+        # input_ids = torch.tensor()
+        # input_mask = torch.tensor()
+        # segment_ids = torch.tensor()
+        # start_pos = torch.tensor()
+        # end_pos = torch.tensor()
+        # span_pos = torch.tensor()
+        # ner_cate = torch.tensor()
+        # span_label_mask = torch.tensor()
+        
         input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
         input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
         segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
@@ -138,6 +152,7 @@ class MRCNERDataLoader(object):
         ner_cate = torch.tensor([f.ner_cate for f in features], dtype=torch.long)
         span_label_mask = torch.tensor([f.span_label_mask for f in features], dtype=torch.long)
         dataset = TensorDataset(input_ids, input_mask, segment_ids, start_pos, end_pos, span_pos, span_label_mask, ner_cate)
+        print("{} {} data loaded".format(str(len(features)), data_sign))
         
         if data_sign == "train":
             datasampler = SequentialSampler(dataset) # RandomSampler(dataset)

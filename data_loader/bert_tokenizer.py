@@ -8,7 +8,7 @@
 # bert_tokenizer to solve the span of tagging 
 
 
-from pytorch_pretrained_bert.tokenization import BertTokenizer 
+from transformers import BertTokenizer 
 
 
 

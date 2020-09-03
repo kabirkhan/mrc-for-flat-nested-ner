@@ -26,6 +26,31 @@ class QueryNERProcessor(object):
         return read_mrc_ner_examples(os.path.join(data_dir, "mrc-ner.test"))
 
 
+class WlpWnut20Processor(QueryNERProcessor):
+    def get_labels(self, ):
+        return [
+            "Action",
+            "Reagent",
+            "Modifier",
+            "Location",
+            "Amount",
+            "Time",
+            "Method",
+            "Concentration",
+            "Temperature",
+            "Device",
+            "Measure-Type",
+            "Numerical",
+            "Speed",
+            "Generic-Measure",
+            "Size",
+            "Seal",
+            "pH",
+            "Mention", 
+            "O"
+        ]
+
+
 class Conll03Processor(QueryNERProcessor):
     def get_labels(self, ):
         return ["ORG", "PER", "LOC", "MISC", "O"]

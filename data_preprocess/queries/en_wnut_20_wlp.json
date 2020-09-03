@@ -1,0 +1,42 @@
+{
+    "default": {
+            "Action": "action is a process of doing something, typically to achieve an aim. in the context of wet lab protocols, action mentions in a sentence or a step are deliberate but short descriptions of a task tying together various entities in a meaningful way",
+            "Reagent": "a substance or mixture for use in any kind of reaction in preparing a product because of its chemical or biological activity",
+            "Modifier": "cardinal entities are numerals that do not fall under another type",
+            "Location": "containers for reagents or other physical entities",
+            "Amount": "the amount of any reagent being used in a given step, in terms of weight or volume",
+            "Time": "data entities are absolute or relative dates or periods",
+            "Method": "a word or phrase used to concisely define the procedure to be performed in association with the chosen action verb",
+            "Concentration": "measure of the relative proportions of two or more quantities in a mixture",
+            "Temperature": "any temperature mentioned in degree celsius, fahrenheit, or kelvin",
+            "Device": "a machine capable of acting as a container as well as performing a specific task on the objects that it hold",
+            "Measure-Type": "a generic tag to mark the type of measurement associated with a number",
+            "Numerical": "A generic tag for a number that doesn’t fit time, temp, etc and which isn’t accompanied by its unit of measure",
+            "Speed": "typically a measure that represents rotation per min for centrifuges",
+            "Generic-Measure": "any measures that don’t fit the list of defined measures in this list",
+            "Size": "a measure of the dimension of an object, length, area or thickness.",
+            "Seal": "any kind of lid or enclosure for the location or device",
+            "pH": "measure of acidity or alkalinity of a solution",
+            "Mention": "it, them, they, etc"
+    },
+    "labels": [
+        "Action",
+        "Reagent",
+        "Modifier",
+        "Location",
+        "Amount",
+        "Time",
+        "Method",
+        "Concentration",
+        "Temperature",
+        "Device",
+        "Measure-Type",
+        "Numerical",
+        "Speed",
+        "Generic-Measure",
+        "Size",
+        "Seal",
+        "pH",
+        "Mention"
+    ]
+}

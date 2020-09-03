@@ -1,11 +1,6 @@
-numpy
-awscli
 requests
 scipy
-argparse
 tqdm
-typing
-pathlib
-boto3
 pathos
-pytorch-pretrained-bert==0.6.1
+torch==1.5.1
+transformers==3.0.2

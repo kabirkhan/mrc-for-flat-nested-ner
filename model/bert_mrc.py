@@ -10,15 +10,14 @@
 
 import torch 
 import torch.nn as nn
-
+from transformers import BertConfig, BertModel
 
 from layer.classifier import MultiNonLinearClassifier
-from layer.bert_basic_model import BertModel, BertConfig  
 
 
 class BertQueryNER(nn.Module):
     def __init__(self, config):
-        super(BertQueryNER, self).__init__()
+        super().__init__()
         bert_config = BertConfig.from_dict(config.bert_config.to_dict()) 
         self.bert = BertModel(bert_config)
 
@@ -46,7 +45,7 @@ class BertQueryNER(nn.Module):
                 span_positions[k][i][j] represents whether or not from start_pos{i} to end_pos{j} of the K-th sentence in the batch is an entity. 
         """
 
-        sequence_output, pooled_output, _ = self.bert(input_ids, token_type_ids, attention_mask, output_all_encoded_layers=False)
+        sequence_output, pooled_output = self.bert(input_ids, token_type_ids, attention_mask)
 
         sequence_heatmap = sequence_output # batch x seq_len x hidden
         batch_size, seq_len, hid_size = sequence_heatmap.size()

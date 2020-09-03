@@ -16,11 +16,13 @@ import os
 import argparse 
 import numpy as np 
 import random
+from transformers import AutoTokenizer
 import torch
+
 
 from data_loader.model_config import Config 
 from data_loader.mrc_data_loader import MRCNERDataLoader
-from data_loader.mrc_data_processor import Conll03Processor, MSRAProcessor, Onto4ZhProcessor, Onto5EngProcessor, GeniaProcessor, ACE2004Processor, ACE2005Processor, ResumeZhProcessor
+from data_loader.mrc_data_processor import Conll03Processor, MSRAProcessor, Onto4ZhProcessor, Onto5EngProcessor, GeniaProcessor, ACE2004Processor, ACE2005Processor, ResumeZhProcessor, WlpWnut20Processor
 from layer.optim import AdamW, lr_linear_decay, BertAdam
 from model.bert_mrc import BertQueryNER
 from data_loader.bert_tokenizer import BertTokenizer4Tagger 
@@ -99,13 +101,15 @@ def load_data(config):
     elif config.data_sign == "ace2005":
         data_processor = ACE2005Processor()
     elif config.data_sign == "resume":
-            data_processor = ResumeZhProcessor()
+        data_processor = ResumeZhProcessor()
+    elif config.data_sign == "en_wnut_20_wlp":
+        data_processor = WlpWnut20Processor()
     else:
         raise ValueError("Please Notice that your data_sign DO NOT exits !!!!!")
 
 
     label_list = data_processor.get_labels()
-    tokenizer = BertTokenizer4Tagger.from_pretrained(config.bert_model, do_lower_case=config.do_lower_case)
+    tokenizer = BertTokenizer4Tagger.from_pretrained(config.bert_model)
 
     dataset_loaders = MRCNERDataLoader(config, data_processor, label_list, tokenizer, mode="train", allow_impossible=True)
     train_dataloader = dataset_loaders.get_dataloader(data_sign="train", num_data_processor=config.num_data_processor)
